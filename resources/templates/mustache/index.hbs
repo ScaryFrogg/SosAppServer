@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+
+        .container {
+            background: transparent;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            position: absolute;
+            padding: 0;
+            margin: 0;
+            z-index: 9;
+            width: min-content;
+            height: min-content;
+        }
+
+        .controls {
+            position: absolute;
+            top: -10%
+        }
+
+        iframe {
+            z-index: 1;
+        }
+
+        .transparent {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+        }
+
+        .inner-circle {
+            position: absolute;
+            display: block;
+            z-index: 10;
+            background: #ff0000;
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <span id="zoomLable">Zoom: 17</span>
+        <input type="range" min="10" value="17" max="21" step="1" id="zoom">
+        <select id="mapType">
+            <option value="satellite">Satellite</option>
+            <option value="roadmap" selected="selected">Roadmap</option>
+        </select>
+    </div>
+    <div class="inner-circle"></div>
+    <div class="transparent"></div>
+    {{#user}}
+        <iframe id="map" width="600" height="450" frameborder="0" style="border:0"
+                src="https://www.google.com/maps/embed/v1/view?key=AIzaSyBwEf71I05Viupw9xH6lOX_Y1N6R6j1LjQ&center={{lastLocation.lat}}
+        ,{{lastLocation.lat}}&zoom=17&maptype=roadmap"></iframe>
+        <div id="id-holder" hidden data-id="{{user.id}}"></div>
+    {{/user}}
+</div>
+<script defer>
+    const zoomLable = document.querySelector("#zoomLable")
+    const zoomRange = document.querySelector("#zoom")
+    const mapType = document.querySelector("#mapType")
+    const mapa = document.querySelector("#map")
+    const idHolder = document.querySelector("#id-holder")
+
+    let lat = -33.8569
+    let lon = 151.2152
+    let previousLat = -33.8569
+    let previousLon = 151.2152
+    let configurationChanged = false
+
+    mapType.addEventListener("change", () => {
+        configurationChanged = true
+    })
+    zoomRange.addEventListener("change", function () {
+        configurationChanged = true
+        zoomLable.innerHTML = `Zoom: ${this.value}`
+    })
+
+    function updateMap() {
+        console.log("updating map")
+        configurationChanged = false
+        const zoom = zoomRange.value
+        const type = mapType.options[mapType.selectedIndex].value;
+        let link = `https://www.google.com/maps/embed/v1/view?key=AIzaSyBwEf71I05Viupw9xH6lOX_Y1N6R6j1LjQ&center=${lat},${lon}&zoom=${zoom}&maptype=${type}`
+        mapa.setAttribute("src", link)
+    }
+
+    function ajaxCall() {
+        if (idHolder !== undefined) {
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    const responseLocation = JSON.parse(this.responseText)
+                    console.log(responseLocation)
+                    newLat = responseLocation.lat
+                    newLon = responseLocation.lon
+                    if (hasDataChanged(newLat, newLon) || configurationChanged) {
+                        updateMap()
+                    }
+                }
+                if (configurationChanged) {
+                    updateMap()
+                }
+
+            };
+            xhttp.open("GET", `/api?id=${idHolder.getAttribute("data-id")}`);
+            xhttp.send();
+        }
+    }
+
+    function hasDataChanged(newLat, newLon) {
+        console.log({lat, lon, newLat, newLon, previousLat, previousLon})
+        if (newLat == previousLat && newLon == previousLon) {
+            console.log("retirning false")
+            return 0
+        } else {
+            previousLon = lon
+            previousLat = lat
+            lat = newLat
+            lon = newLon
+            return 1
+        }
+    }
+    setInterval(() => {
+        ajaxCall()
+    }, 5000);
+</script>
+</body>
+</html>
